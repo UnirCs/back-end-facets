@@ -1,0 +1,18 @@
+## Configuracion de Spring
+spring:
+  application:
+    name: facets-search-engine
+
+## Configuracion de Instancia 
+server:
+  port: 8088
+
+##Elasticsearch config
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST}
+  credentials:
+    user: ${ELASTICSEARCH_USER}
+    password: ${ELASTICSEARCH_PWD}
+logging:
+  level:
+    tracer: TRACE
