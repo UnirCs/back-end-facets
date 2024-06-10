@@ -59,7 +59,7 @@ public class DataAccessRepository {
         // Si el usuario ha seleccionado algun valor relacionado con la designacion, lo añadimos a la query
         if (designationValues != null && !designationValues.isEmpty()) {
             designationValues.forEach(
-                    designation -> querySpec.should(QueryBuilders.termQuery(Consts.FIELD_DESIGNATION, designation))
+                    designation -> querySpec.must(QueryBuilders.termQuery(Consts.FIELD_DESIGNATION, designation))
             );
         }
 
@@ -107,8 +107,8 @@ public class DataAccessRepository {
                     }
             );
 
-        //Si no he recibido ningun parametro, busco todos los elementos.
-        if (!querySpec.hasClauses()) {
+        //Si no se ha seleccionado ningun filtro, se añade un filtro por defecto para que la query no sea vacia
+        if(!querySpec.hasClauses()) {
             querySpec.must(QueryBuilders.matchAllQuery());
         }
 
@@ -122,8 +122,8 @@ public class DataAccessRepository {
                 .field(Consts.FIELD_GENDER).size(10000));
 
         nativeSearchQueryBuilder.addAggregation(AggregationBuilders
-                .terms(Consts.AGG_KEY_TERM_DESIGNATION)
-                .field(Consts.FIELD_DESIGNATION).size(10000));
+                    .terms(Consts.AGG_KEY_TERM_DESIGNATION)
+                    .field(Consts.FIELD_DESIGNATION).size(10000));
 
         nativeSearchQueryBuilder.addAggregation(AggregationBuilders
                 .terms(Consts.AGG_KEY_TERM_MARITAL_STATUS)
