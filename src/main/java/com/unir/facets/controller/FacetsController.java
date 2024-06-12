@@ -28,6 +28,8 @@ public class FacetsController {
             @RequestParam(required = false) List<String> civilStatusValues,
             @RequestParam(required = false) List<String> ageValues,
             @RequestParam(required = false) List<String> salaryValues,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String address,
             @RequestParam(required = false, defaultValue = "0") String page) {
 
         EmployeesQueryResponse response = service.getProducts(
@@ -36,6 +38,8 @@ public class FacetsController {
 				civilStatusValues,
 				ageValues,
 				salaryValues,
+                name,
+                address,
                 page);
         return ResponseEntity.ok(response);
     }

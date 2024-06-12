@@ -20,6 +20,8 @@ public class FacetsService {
 			List<String> civilStatusValues,
 			List<String> ageValues,
 			List<String> salaryValues,
+			String name,
+			String address,
 			String page) {
 
 		return repository.findProducts(
@@ -28,6 +30,8 @@ public class FacetsService {
 				civilStatusValues,
 				ageValues,
 				salaryValues,
+				name,
+				address,
 				page);
 	}
 }

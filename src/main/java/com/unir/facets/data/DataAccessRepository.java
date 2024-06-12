@@ -5,7 +5,9 @@ import com.unir.facets.model.response.AggregationDetails;
 import com.unir.facets.model.response.EmployeesQueryResponse;
 import com.unir.facets.utils.Consts;
 import lombok.SneakyThrows;
+import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -36,7 +38,7 @@ public class DataAccessRepository {
     private final EmployeeRepository employeeRepository;
     private final ElasticsearchOperations elasticClient;
 
-    private final String[] address = {"address", "address._2gram", "address._3gram"};
+    private final String[] address_fields = {"Address", "Address._2gram", "Address._3gram"};
 
     @SneakyThrows
     public EmployeesQueryResponse findProducts(
@@ -45,6 +47,8 @@ public class DataAccessRepository {
             List<String> civilStatusValues,
             List<String> ageValues,
             List<String> salaryValues,
+            String name,
+            String address,
             String page) {
 
         BoolQueryBuilder querySpec = QueryBuilders.boolQuery();
@@ -54,6 +58,16 @@ public class DataAccessRepository {
             genderValues.forEach(
                     gender -> querySpec.must(QueryBuilders.termQuery(Consts.FIELD_GENDER, gender))
             );
+        }
+
+        // Si el usuario ha seleccionado algun valor relacionado con el nombre, lo añadimos a la query
+        if (!StringUtils.isEmpty(name)) {
+            querySpec.must(QueryBuilders.matchQuery(Consts.FIELD_FIRST_NAME, name));
+        }
+
+        // Si el usuario ha seleccionado algun valor relacionado con la direccion, lo añadimos a la query
+        if (!StringUtils.isEmpty(address)) {
+            querySpec.must(QueryBuilders.multiMatchQuery(address, address_fields).type(MultiMatchQueryBuilder.Type.BOOL_PREFIX));
         }
 
         // Si el usuario ha seleccionado algun valor relacionado con la designacion, lo añadimos a la query
