@@ -1,6 +1,6 @@
 package com.unir.facets.service;
 
-import com.unir.facets.model.response.EmployeesQueryResponse;
+import com.unir.facets.controller.model.EmployeesQueryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

@@ -1,6 +1,6 @@
-package com.unir.facets.model.response;
+package com.unir.facets.controller.model;
 
-import com.unir.facets.model.db.Employee;
+import com.unir.facets.data.model.Employee;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

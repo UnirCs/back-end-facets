@@ -1,4 +1,4 @@
-package com.unir.facets.model.db;
+package com.unir.facets.data.model;
 
 import com.unir.facets.utils.Consts;
 import org.springframework.data.annotation.Id;

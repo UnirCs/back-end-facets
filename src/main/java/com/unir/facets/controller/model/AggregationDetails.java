@@ -1,4 +1,4 @@
-package com.unir.facets.model.response;
+package com.unir.facets.controller.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

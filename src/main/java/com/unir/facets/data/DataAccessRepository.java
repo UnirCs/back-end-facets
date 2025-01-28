@@ -1,8 +1,8 @@
 package com.unir.facets.data;
 
-import com.unir.facets.model.db.Employee;
-import com.unir.facets.model.response.AggregationDetails;
-import com.unir.facets.model.response.EmployeesQueryResponse;
+import com.unir.facets.data.model.Employee;
+import com.unir.facets.controller.model.AggregationDetails;
+import com.unir.facets.controller.model.EmployeesQueryResponse;
 import com.unir.facets.utils.Consts;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;

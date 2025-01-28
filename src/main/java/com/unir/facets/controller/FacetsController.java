@@ -1,6 +1,6 @@
 package com.unir.facets.controller;
 
-import com.unir.facets.model.response.EmployeesQueryResponse;
+import com.unir.facets.controller.model.EmployeesQueryResponse;
 import com.unir.facets.service.FacetsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
