@@ -6,18 +6,22 @@ import com.unir.facets.controller.model.EmployeesQueryResponse;
 import com.unir.facets.utils.Consts;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.StringUtils;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MultiMatchQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.range.ParsedRange;
-import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.data.client.orhlc.OpenSearchAggregations;
+import org.opensearch.data.core.OpenSearchOperations;
+import org.opensearch.index.query.BoolQueryBuilder;
+import org.opensearch.index.query.MultiMatchQueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.index.query.RangeQueryBuilder;
+import org.opensearch.search.aggregations.Aggregation;
+import org.opensearch.search.aggregations.AggregationBuilders;
+import org.opensearch.search.aggregations.bucket.filter.FiltersAggregator;
+import org.opensearch.search.aggregations.bucket.filter.ParsedFilters;
+import org.opensearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Repository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Repository
 @RequiredArgsConstructor
@@ -36,7 +41,7 @@ public class DataAccessRepository {
     // Esta clase (y bean) es la unica que usan directamente los servicios para
     // acceder a los datos.
     private final EmployeeRepository employeeRepository;
-    private final ElasticsearchOperations elasticClient;
+    private final ElasticsearchOperations openSearchClient;
 
     private final String[] address_fields = {"Address", "Address._2gram", "Address._3gram"};
 
@@ -130,18 +135,24 @@ public class DataAccessRepository {
         NativeSearchQueryBuilder nativeSearchQueryBuilder = new NativeSearchQueryBuilder().withQuery(querySpec);
 
         //Se incluyen las Agregaciones
-        //Se incluyen las agregaciones de termino para los campos genero, designacion y estado civil
-        nativeSearchQueryBuilder.addAggregation(AggregationBuilders
-                .terms(Consts.AGG_KEY_TERM_GENDER)
-                .field(Consts.FIELD_GENDER).size(10000));
-
-        nativeSearchQueryBuilder.addAggregation(AggregationBuilders
-                    .terms(Consts.AGG_KEY_TERM_DESIGNATION)
-                    .field(Consts.FIELD_DESIGNATION).size(10000));
-
-        nativeSearchQueryBuilder.addAggregation(AggregationBuilders
-                .terms(Consts.AGG_KEY_TERM_MARITAL_STATUS)
-                .field(Consts.FIELD_MARITAL_STATUS).size(10000));
+        //Agregaciones de término para genero, designacion y estado civil
+        //Agregaciones de filtros para edad y salario (workaround para bug de OpenSearch con múltiples range aggregations)
+        nativeSearchQueryBuilder.withAggregations(
+                AggregationBuilders.terms(Consts.AGG_KEY_TERM_GENDER).field(Consts.FIELD_GENDER).size(10000),
+                AggregationBuilders.terms(Consts.AGG_KEY_TERM_DESIGNATION).field(Consts.FIELD_DESIGNATION).size(10000),
+                AggregationBuilders.terms(Consts.AGG_KEY_TERM_MARITAL_STATUS).field(Consts.FIELD_MARITAL_STATUS).size(10000),
+                // Usar filters aggregation en lugar de range para evitar bug de OpenSearch
+                AggregationBuilders.filters(Consts.AGG_KEY_RANGE_AGE,
+                        new FiltersAggregator.KeyedFilter(Consts.AGG_KEY_RANGE_AGE_0, QueryBuilders.rangeQuery(Consts.FIELD_AGE).lt(29)),
+                        new FiltersAggregator.KeyedFilter(Consts.AGG_KEY_RANGE_AGE_1, QueryBuilders.rangeQuery(Consts.FIELD_AGE).gte(29).lt(33)),
+                        new FiltersAggregator.KeyedFilter(Consts.AGG_KEY_RANGE_AGE_2, QueryBuilders.rangeQuery(Consts.FIELD_AGE).gte(33))
+                ),
+                AggregationBuilders.filters(Consts.AGG_KEY_RANGE_SALARY,
+                        new FiltersAggregator.KeyedFilter(Consts.AGG_KEY_RANGE_SALARY_0, QueryBuilders.rangeQuery(Consts.FIELD_SALARY).lt(62000)),
+                        new FiltersAggregator.KeyedFilter(Consts.AGG_KEY_RANGE_SALARY_1, QueryBuilders.rangeQuery(Consts.FIELD_SALARY).gte(62000).lt(68000)),
+                        new FiltersAggregator.KeyedFilter(Consts.AGG_KEY_RANGE_SALARY_2, QueryBuilders.rangeQuery(Consts.FIELD_SALARY).gte(68000))
+                )
+        );
 
 
         //Se establece un maximo de 5 resultados, va acorde con el tamaño de la pagina
@@ -157,7 +168,7 @@ public class DataAccessRepository {
         //Se construye la query
         Query query = nativeSearchQueryBuilder.build();
         // Se realiza la busqueda
-        SearchHits<Employee> result = elasticClient.search(query, Employee.class);
+        SearchHits<Employee> result = openSearchClient.search(query, Employee.class);
         return new EmployeesQueryResponse(getResponseEmployees(result), getResponseAggregations(result));
     }
 
@@ -183,7 +194,8 @@ public class DataAccessRepository {
 
         //Recorremos las agregaciones
         if (result.hasAggregations()) {
-            Map<String, Aggregation> aggs = result.getAggregations().asMap();
+            OpenSearchAggregations aggregations = (OpenSearchAggregations) result.getAggregations();
+            Map<String, Aggregation> aggs = Objects.requireNonNull(aggregations).aggregations().asMap();
 
             //Recorremos las agregaciones
             aggs.forEach((key, value) -> {
@@ -195,16 +207,16 @@ public class DataAccessRepository {
 
                 //Si la agregacion es de tipo termino, recorremos los buckets
                 if (value instanceof ParsedStringTerms parsedStringTerms) {
-                    parsedStringTerms.getBuckets().forEach(bucket -> {
-                        responseAggregations.get(key).add(new AggregationDetails(bucket.getKey().toString(), (int) bucket.getDocCount()));
-                    });
+                    parsedStringTerms.getBuckets().forEach(bucket ->
+                        responseAggregations.get(key).add(new AggregationDetails(bucket.getKey().toString(), (int) bucket.getDocCount()))
+                    );
                 }
 
-                //Si la agregacion es de tipo rango, recorremos tambien los buckets
-                if (value instanceof ParsedRange parsedRange) {
-                    parsedRange.getBuckets().forEach(bucket -> {
-                        responseAggregations.get(key).add(new AggregationDetails(bucket.getKeyAsString(), (int) bucket.getDocCount()));
-                    });
+                //Si la agregacion es de tipo filters (usado como workaround para range), recorremos los buckets
+                if (value instanceof ParsedFilters parsedFilters) {
+                    parsedFilters.getBuckets().forEach(bucket ->
+                        responseAggregations.get(key).add(new AggregationDetails(bucket.getKeyAsString(), (int) bucket.getDocCount()))
+                    );
                 }
             });
         }
