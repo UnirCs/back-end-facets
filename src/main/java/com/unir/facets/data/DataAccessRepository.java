@@ -143,20 +143,6 @@ public class DataAccessRepository {
                 .terms(Consts.AGG_KEY_TERM_MARITAL_STATUS)
                 .field(Consts.FIELD_MARITAL_STATUS).size(10000));
 
-        //Se incluyen las agregaciones de rango para los campos edad y salario
-        nativeSearchQueryBuilder.addAggregation(AggregationBuilders
-                .range(Consts.AGG_KEY_RANGE_AGE)
-                .field(Consts.FIELD_AGE)
-                .addUnboundedTo(Consts.AGG_KEY_RANGE_AGE_0,29)
-                .addRange(Consts.AGG_KEY_RANGE_AGE_1, 29, 33)
-                .addUnboundedFrom(Consts.AGG_KEY_RANGE_AGE_2,33));
-
-        nativeSearchQueryBuilder.addAggregation(AggregationBuilders
-                .range(Consts.AGG_KEY_RANGE_SALARY)
-                .field(Consts.FIELD_SALARY)
-                .addUnboundedTo(Consts.AGG_KEY_RANGE_SALARY_0,62000)
-                .addRange(Consts.AGG_KEY_RANGE_SALARY_1,62000, 68000)
-                .addUnboundedFrom(Consts.AGG_KEY_RANGE_SALARY_2,68000));
 
         //Se establece un maximo de 5 resultados, va acorde con el tamaño de la pagina
         nativeSearchQueryBuilder.withMaxResults(5);
